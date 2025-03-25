@@ -1,0 +1,128 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type User {
+  _id: ID!
+  username: String!
+  email: String!
+}
+
+type Categories {
+  _id: ID!
+  name: String!
+  type: CategoryType!
+  userId: String!
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+  BOTH
+}
+
+type Transaction {
+  title: String!
+  date: DateTime!
+  amount: Float!
+  type: TransactionType!
+  userId: String!
+  category: String!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+enum TransactionType {
+  EXPENSE
+  INCOME
+}
+
+type LoginResponseDto {
+  accessToken: String!
+  user: User!
+}
+
+type Query {
+  me: User
+  getCategories: [Categories!]!
+  getMyTransactions(type: TransactionType, date: String, userId: String, startDate: String, endDate: String): [Transaction!]!
+}
+
+type Mutation {
+  createUser(input: CreateUserDto!): User!
+  updateUser(input: UpdateUserDto!): User!
+  deleteMe(input: DeleteUserDto!): Boolean!
+  createCategory(input: CreateCategoriesDto!): Categories!
+  updateCategory(input: UpdateCategoryDto!): Categories!
+  deleteCategory(input: DeleteCategoryDto!): Boolean!
+  createTransaction(input: CreateTransaction!): Transaction!
+  deleteTransaction(input: DeleteTransactionDto!): Boolean!
+  updateTransaction(input: UpdateTransactionDto!): Transaction!
+  login(input: SignInDto!): LoginResponseDto!
+}
+
+input CreateUserDto {
+  username: String!
+  email: String!
+  password: String!
+}
+
+input UpdateUserDto {
+  username: String
+  email: String
+  currentPassword: String!
+  newPassword: String
+  userId: String
+}
+
+input DeleteUserDto {
+  password: String!
+  userId: String
+}
+
+input CreateCategoriesDto {
+  name: String!
+  type: CategoryType!
+  userId: String
+}
+
+input UpdateCategoryDto {
+  name: String!
+  userId: String
+  categoryId: String!
+}
+
+input DeleteCategoryDto {
+  categoryId: String!
+  userId: String
+}
+
+input CreateTransaction {
+  title: String!
+  date: String!
+  amount: Float!
+  type: TransactionType!
+  userId: String
+  category: String!
+}
+
+input DeleteTransactionDto {
+  transactionId: String!
+  userId: String
+}
+
+input UpdateTransactionDto {
+  transactionId: String!
+  userId: String
+  title: String
+  amount: Float
+  date: String
+}
+
+input SignInDto {
+  email: String!
+  password: String!
+}
