@@ -1,10 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {Injectable, InternalServerErrorException, UnauthorizedException} from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { SignInDto } from './dto/sign-in.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import JWTPayload from './interfaces/jwt-payload.interface';
+import {User} from "../users/schemas/users.schema";
 
 @Injectable()
 export class AuthService {
@@ -14,7 +15,13 @@ export class AuthService {
   ) {}
 
   async signIn({ email, password }: SignInDto): Promise<LoginResponseDto> {
-    const user = await this.usersService.findByEmail(email);
+    let user: User | null = null;
+    try {
+      user = await this.usersService.findByEmail(email);
+    } catch (error) {
+      console.error('DB error: couldnt get user', error);
+      throw new InternalServerErrorException("DB error: could not find user");
+    }
 
     // Case: we cant find the user by its email
     if (!user) {
@@ -40,7 +47,7 @@ export class AuthService {
 
     const { password: _, ...safeUser } = user.toObject();
 
-     // TODO: create a Type for the sanitized user we are returning
+    // TODO: create a Type for the sanitized user we are returning
     return {
       accessToken: token,
       user: safeUser,
