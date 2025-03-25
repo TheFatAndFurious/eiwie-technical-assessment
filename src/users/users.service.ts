@@ -1,6 +1,8 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -24,7 +26,14 @@ export class UsersService {
   async create(createUserDto: CreateUserDto): Promise<User> {
     const { username, email, password } = createUserDto;
 
-    const existingUser = await this.userModel.findOne({ email });
+    let existingUser: User | null = null;
+    try {
+      existingUser = await this.userModel.findOne({ email });
+    } catch (error) {
+      console.log('DB error: failed to verify if user exists', error);
+      throw new NotFoundException('DB error: failed to search for user');
+    }
+
     if (existingUser) {
       throw new ConflictException('Email already exists');
     }
@@ -36,17 +45,35 @@ export class UsersService {
       password: hashedPassword,
     });
 
-    return createdUser.save();
+    let newUser: User | null;
+    try {
+      newUser = await createdUser.save();
+    } catch (error) {
+      console.error('DB error: failed to save new user', error);
+      throw new InternalServerErrorException(
+        'DB error: failed to save new user',
+      );
+    }
+
+    return newUser;
   }
 
   async deleteUser(input: DeleteUserDto): Promise<boolean> {
-    const existingUser: User | null = await this.userModel.findById(
-      input.userId,
-    );
+    let existingUser: User | null;
+
+    try {
+      existingUser = await this.userModel.findById(input.userId);
+    } catch (error) {
+      console.error('DB error: failed to search for user', error);
+      throw new InternalServerErrorException(
+        'DB error: failed to search for user',
+      );
+    }
 
     if (!existingUser) {
       throw new NotFoundException('User not found');
     }
+
     const passwordMatches = await bcrypt.compare(
       input.password,
       existingUser.password,
@@ -56,6 +83,7 @@ export class UsersService {
       throw new ConflictException('Invalid credentials');
     }
 
+    // Here we use a promise to delete the user and everything he created
     try {
       await Promise.all([
         this.userModel.deleteOne({ _id: input.userId }),
@@ -63,20 +91,33 @@ export class UsersService {
         this.categoriesModel.deleteMany({ userId: input.userId }),
       ]);
     } catch (error) {
-      throw new NotFoundException('Failed to delete user data');
+      console.error(
+        'DB error: failed to delete user and its created data',
+        error,
+      );
+      throw new InternalServerErrorException('Failed to delete user data');
     }
 
     return true;
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.userModel.findOne({ email }).exec();
+    try {
+      return this.userModel.findOne({ email }).exec();
+    } catch (error) {
+      console.error('DB error: failed to find user by its email', error);
+      throw new InternalServerErrorException('DB error: Couldnt find the user');
+    }
   }
 
   async getProfile(userId: string): Promise<User> {
-    const user = await this.userModel
-      .findOne({ _id: userId })
-      .select('-password');
+    let user: User | null;
+    try {
+      user = await this.userModel.findOne({ _id: userId }).select('-password');
+    } catch (error) {
+      console.error('DB error: failed to find user', error);
+      throw new InternalServerErrorException('Failed to find user', error);
+    }
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -84,9 +125,15 @@ export class UsersService {
   }
 
   async updateProfile(updateUserDto: UpdateUserDto): Promise<User> {
-    const existingUser: User | null = await this.userModel.findById(
-      updateUserDto.userId,
-    );
+    let existingUser: User | null;
+    try {
+      existingUser = await this.userModel.findById(updateUserDto.userId);
+    } catch (error) {
+      console.error('DB error: couldnt search for user', error);
+      throw new InternalServerErrorException(
+        'Failed to find user when looking for its existence',
+      );
+    }
 
     if (!existingUser) {
       throw new NotFoundException('User not found');
@@ -101,9 +148,17 @@ export class UsersService {
     }
 
     if (updateUserDto.email) {
-      const userWithEmail: User | null = await this.userModel.findOne({
-        email: updateUserDto.email,
-      });
+      let userWithEmail: User | null;
+      try {
+        userWithEmail = await this.userModel.findOne({
+          email: updateUserDto.email,
+        });
+      } catch (error) {
+        console.error('DB error: failed to find user', error);
+        throw new InternalServerErrorException(
+          'DB error: couldnt search for user',
+        );
+      }
       if (
         userWithEmail &&
         userWithEmail._id.toString() !== updateUserDto.userId
@@ -122,7 +177,14 @@ export class UsersService {
       const hashedPassword = await bcrypt.hash(updateUserDto.newPassword, 12);
       existingUser.password = hashedPassword;
     }
-    await existingUser.save();
-    return existingUser;
+
+    try {
+      return await existingUser.save();
+    } catch (error) {
+      console.error('DB error: couldnt save updated user', error);
+      throw new InternalServerErrorException(
+        'DB error: couldnt save modifications for user',
+      );
+    }
   }
 }

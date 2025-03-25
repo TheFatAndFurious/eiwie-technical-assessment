@@ -2,11 +2,12 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Categories } from './schemas/categories.schema';
-import { Model } from 'mongoose';
+import {DeleteResult, Model} from 'mongoose';
 import { CreateCategoriesDto } from './dto/create-categories.dto';
 import { Transaction } from '../transactions/schemas/transactions.schema';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
@@ -26,33 +27,71 @@ export class CategoriesService {
   // have the
   // same category name multiple times as they would each be created by a different user
   async create(createCategoriesDto: CreateCategoriesDto): Promise<Categories> {
-    const existingCategory = await this.categoriesModel.findOne({
-      name: createCategoriesDto.name,
-      userId: createCategoriesDto.userId,
-    });
+    //TODO: normalize category name to lower case
+
+    let existingCategory: Categories | null;
+    try {
+      existingCategory = await this.categoriesModel.findOne({
+        name: createCategoriesDto.name,
+        userId: createCategoriesDto.userId,
+      });
+    } catch (error) {
+      console.error('DB error: could not search for category existence', error);
+      throw new InternalServerErrorException(
+        'DB error: could not verify category existence',
+      );
+    }
+
     if (existingCategory) {
       throw new ConflictException('Category already exists');
     }
 
     const category = new this.categoriesModel(createCategoriesDto);
-    return category.save();
+
+    try {
+      return category.save();
+    } catch (error) {
+      console.error('DB error: could not save new category', error);
+      throw new InternalServerErrorException(
+        'DB error: could not save category',
+      );
+    }
   }
 
-  // Making sure there is no transaction associated to the category we are trying to delete
   async delete(deleteCategoryDto: DeleteCategoryDto): Promise<boolean> {
-    const transactionCount = await this.transactionModel.countDocuments({
-      category: deleteCategoryDto.categoryId,
-    });
+    // Making sure there is no transaction associated to the category we are trying to delete
+
+    let transactionCount: number | null;
+    try {
+      transactionCount = await this.transactionModel.countDocuments({
+        category: deleteCategoryDto.categoryId,
+      });
+    } catch (error) {
+      console.error(
+        'DB error: could not verify if there is any transactions associated',
+        error,
+      );
+      throw new InternalServerErrorException(
+        'DB error: couldnt proceed with deletion',
+      );
+    }
+
     if (transactionCount) {
       throw new BadRequestException(
         `Cannot delete category as it is currently used in ${transactionCount} transaction(s)`,
       );
     }
 
-    const wasItDeleted = await this.categoriesModel.deleteOne({
-      _id: deleteCategoryDto.categoryId,
-      userId: deleteCategoryDto.userId,
-    });
+    let wasItDeleted: DeleteResult;
+    try {
+      wasItDeleted = await this.categoriesModel.deleteOne({
+        _id: deleteCategoryDto.categoryId,
+        userId: deleteCategoryDto.userId,
+      });
+    } catch (error){
+      console.error('DB error: could not delete category', error);
+      throw new InternalServerErrorException('DB error: could not delete category', error);
+    }
 
     if (wasItDeleted.deletedCount == 0) {
       throw new ConflictException('You are not authorized to delete this data');
