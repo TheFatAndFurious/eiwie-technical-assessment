@@ -1,6 +1,6 @@
 import { Document, Types } from 'mongoose';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Field, ObjectType, registerEnumType } from '@nestjs/graphql';
+import {Field, GraphQLISODateTime, ObjectType, registerEnumType} from '@nestjs/graphql';
 
 export enum TransactionType {
   EXPENSE = 'EXPENSE',
@@ -18,7 +18,7 @@ export class Transaction extends Document {
   @Prop({ maxlength: 50, required: true })
   title: string;
 
-  @Field()
+  @Field(() => GraphQLISODateTime)
   @Prop({ required: true })
   date: Date;
 

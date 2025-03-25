@@ -1,19 +1,14 @@
 import { Field, InputType } from '@nestjs/graphql';
 import { IsOptional, IsString } from 'class-validator';
-import { CategoryType } from '../schemas/categories.schema';
 
 @InputType()
-export class CreateCategoriesDto {
+export class DeleteTransactionDto {
   @Field()
   @IsString()
-  name: string;
-
-  @Field(() => CategoryType)
-  @IsString()
-  type: CategoryType;
+  transactionId: string;
 
   @Field({ nullable: true })
-  @IsString()
   @IsOptional()
+  @IsString()
   userId?: string;
 }

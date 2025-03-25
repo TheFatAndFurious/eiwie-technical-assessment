@@ -18,16 +18,3 @@ export class CreateUserDto {
   password: string;
 }
 
-@InputType()
-export class UpdateUserDto {
-  @Field({ nullable: true })
-  @IsString()
-  @MinLength(4)
-  @IsOptional()
-  username?: string;
-
-  @Field()
-  @IsEmail()
-  @IsOptional()
-  email?: string;
-}

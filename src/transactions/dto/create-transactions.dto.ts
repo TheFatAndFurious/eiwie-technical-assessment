@@ -2,6 +2,7 @@ import { Field, InputType } from '@nestjs/graphql';
 import {
   IsEnum,
   IsNumber,
+  IsOptional,
   IsString,
   Matches,
   Min,
@@ -30,9 +31,10 @@ export class CreateTransaction {
   @IsEnum(TransactionType)
   type: TransactionType;
 
-  @Field()
+  @Field({ nullable: true })
   @IsString()
-  userId: string;
+  @IsOptional()
+  userId?: string;
 
   @Field()
   @IsString()

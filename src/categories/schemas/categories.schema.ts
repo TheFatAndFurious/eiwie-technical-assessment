@@ -1,6 +1,6 @@
 import { Document, Types } from 'mongoose';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Field, ObjectType, registerEnumType } from '@nestjs/graphql';
+import { Field, ObjectType, registerEnumType, ID } from '@nestjs/graphql';
 
 export enum CategoryType {
   INCOME = 'INCOME',
@@ -15,6 +15,9 @@ registerEnumType(CategoryType, {
 @ObjectType()
 @Schema({ timestamps: true })
 export class Categories extends Document {
+  @Field(() => ID)
+  declare _id: string;
+
   @Field()
   @Prop({ required: true })
   name: string;
